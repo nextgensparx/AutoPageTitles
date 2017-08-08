@@ -1,0 +1,82 @@
+<?php namespace ProcessWire;
+
+class AutoPageTitles extends WireData implements Module {
+    public static function getModuleInfo() {
+		return array(
+			'title' => 'AutoPageTitles',
+			'version' => '0.0.1',
+			'summary' => 'Automatically creates page titles using fields.',
+            'singular' => true,
+			'autoload' => true
+		);
+	}
+
+    public function init() {
+
+        $this->addHookAfter('ProcessTemplate::buildEditForm', function($event) {
+			$form = $event->return;
+            $template = $event->arguments[0];
+            if ($template->hasField('title')) {
+                $field = $this->wire('modules')->get('InputfieldText');
+                $field->label = 'Title format';
+                $field->attr('name', 'titleFormat');
+                $field->attr('value', $template->titleFormat);
+                $field->description = 'Optionally specify a format for automatically generating page titles used when a page is saved.';
+                $field->notes = 'Leave blank to disable. Enter any string. To add a fieldname, subfield or property, surround the fieldname with {}. Dot syntax allowed. Example: \'Dish: {parent.title} {myfield}\' (without quotes).';
+                $field->collapsed = InputField::collapsedBlank;
+
+                $form->children()->get(0)->children()->add($field);
+            }
+			$event->return = $form;
+		});
+
+        $this->pages->addHookBefore('ProcessTemplate::executeSave', $this, 'onTemplateExecuteSave');
+
+        $this->pages->addHookAfter('Pages::saveReady', $this, 'onPageSaveReady');
+	}
+
+    public function onTemplateExecuteSave($event) {
+        $template = $this->templates->get($this->input->post->id);
+        if ($template->hasField('title') and $this->input->post->titleFormat) {
+            $template->set('titleFormat', $this->input->post->titleFormat);
+
+            $fieldgroup = $template->fieldgroup;
+            $f = $fieldgroup->getField('title', true);
+            $f->collapsed = InputField::collapsedHidden;
+            wire('fields')->saveFieldgroupContext($f, $fieldgroup);
+        }
+    }
+
+    public function onPageSaveReady($event) {
+        $page = $event->arguments[0];
+        if (!$page->template->hasField('title')) return;
+        if (!$page->template->titleFormat) return;
+        $page->title = $this->createFromFormat($page, $page->template->titleFormat);
+    }
+
+    public function getPatternValue(Page $page, $pattern) {
+        $patternValue = '';
+        // get field value by field name
+        if (strlen($page->get($pattern))) {
+            if (wire('fields')->get($pattern)->type instanceof FieldtypeOptions) $value = $page->get($pattern)->get('value|title');
+            else $value = $page->get($pattern);
+            if (is_int($value) && $page->template->hasField($pattern) && $this->wire('fields')->get($pattern)->type instanceof FieldtypeDatetime) {
+                $dateOutputFormat = $this->wire('fields')->get($pattern)->dateOutputFormat;
+                $value = WireDateTime::formatDate($value, $dateOutputFormat);
+            }
+            $patternValue = $value;
+        }
+
+        return $patternValue;
+    }
+
+    public function createFromFormat(Page $page, $format) {
+        $format = trim($format, " \t\n\r");
+		if (!$format) return false;
+
+        return preg_replace_callback( "/\{([^}]+)\}/", function ( Array $match ) use ($page) {
+            return $this->getPatternValue($page, $match[1]);
+        }, $format);
+    }
+
+}
