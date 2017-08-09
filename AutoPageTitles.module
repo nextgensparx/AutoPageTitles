@@ -4,7 +4,7 @@ class AutoPageTitles extends WireData implements Module {
     public static function getModuleInfo() {
 		return array(
 			'title' => 'AutoPageTitles',
-			'version' => '0.0.1',
+			'version' => '0.0.2',
 			'summary' => 'Automatically creates page titles using fields.',
             'singular' => true,
 			'autoload' => true
