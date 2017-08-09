@@ -39,11 +39,6 @@ class AutoPageTitles extends WireData implements Module {
         $template = $this->templates->get($this->input->post->id);
         if ($template->hasField('title') and isset($this->input->post->titleFormat)) {
             $template->set('titleFormat', $this->input->post->titleFormat);
-
-            $fieldgroup = $template->fieldgroup;
-            $f = $fieldgroup->getField('title', true);
-            $f->collapsed = InputField::collapsedHidden;
-            wire('fields')->saveFieldgroupContext($f, $fieldgroup);
         }
     }
 
