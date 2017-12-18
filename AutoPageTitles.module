@@ -37,7 +37,7 @@ class AutoPageTitles extends WireData implements Module {
 
     public function onTemplateExecuteSave($event) {
         $template = $this->templates->get($this->input->post->id);
-        if ($template->hasField('title') and isset($this->input->post->titleFormat)) {
+        if ($template->hasField('title') and !is_null($this->input->post->titleFormat)) {
             $template->set('titleFormat', $this->input->post->titleFormat);
         }
     }
